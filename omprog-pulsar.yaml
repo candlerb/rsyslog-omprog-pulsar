@@ -1,0 +1,18 @@
+client:
+  service_url: pulsar://localhost:6650
+
+producer:
+  topic: persistent://public/default/syslog
+
+  # Using a fixed producer name ensures that two instances cannot run at once
+  producer_name: rsyslog
+
+omprog:
+  # Set this if using confirmMessages="on" in rsyslog
+  confirm_messages: True
+
+  # If enabled, this parses the "logtime" field (ISO) into the
+  # pulsar event time field (Unix milliseconds).  If you want
+  # this, you need a recent version of dateutil (2.7+).  Beware that
+  # uncertainty around timezones may make it unreliable.
+  parse_timestamp: True
