@@ -14,6 +14,31 @@ via an rsyslog template to format lines with a JSON metadata prefix:
 The metadata is stored as pulsar message properties (headers), and the
 message itself as the message body.
 
+## Why separate message and metadata?
+
+A number of common logging systems bundle together the message and metadata
+into a single JSON object.
+
+Whilst this is convenient, it has a problem: JSON strings do not carry
+arbitrary binary data, only valid Unicode text.  Syslog sources can and
+sometimes do generate data which is not valid UTF-8.  You therefore have the
+choice of:
+
+1. Your logging system blowing up when an unexpected binary symbol appears;
+2. Your logging solution generating something that looks like JSON, but
+   technically isn't (and therefore may blow up further down the line);
+3. Your logging system "fixing" the message by dropping or replacing invalid
+   characters, so you no longer have a record of exactly what was sent.
+
+With pulsar you can avoid this problem: the message body can be retained
+exactly as-is.  Certainly you may have to modify it down the line to work
+with other systems, but you have control and visibility of the process, and
+you have the original message to refer to should you need it.
+
+rsyslog is not completely binary-clean - for example it has to replace
+newline with `#012` to work with the line-based omprog protocol - but at
+least it avoids character encoding issues.
+
 ## Sample configuration: rsyslog
 
 Add to `/etc/rsyslog.conf`:
