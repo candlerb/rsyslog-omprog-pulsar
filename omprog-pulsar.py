@@ -16,14 +16,12 @@
 import json
 import pulsar
 import sys
+import time
 
 try:
     # Only for parse_timestamp=True.  Minimum version 2.7
     import dateutil.parser
 except LoadError:
-    pass
-
-def _ignore(res, msg):
     pass
 
 class OmprogPulsar:
@@ -47,19 +45,28 @@ class OmprogPulsar:
         self.commit_transaction_mark = commit_transaction_mark
 
     def forward(self, events):
-        if not events:
+        results = []
+        sent = 0
+        for msg, meta, ts in events:
+            self.producer.send_async(msg, properties=meta, event_timestamp=ts,
+                                     callback=lambda r, m: results.append(r))
+            sent += 1
+        if not sent:
             return "OK"
-        # forward all events except last asynchronously
-        for msg, meta, ts in events[0:-1]:
-            self.producer.send_async(msg, properties=meta, event_timestamp=ts, callback=_ignore)
-        # final message in batch
-        msg, meta, ts = events[-1]
-        if self.confirm_messages:
-            self.producer.send(msg, properties=meta, event_timestamp=ts)
-        else:
-            self.producer.send_async(msg, properties=meta, event_timestamp=ts, callback=_ignore)
         events.clear()
-        return "OK"
+        if not self.confirm_messages:
+            return "OK"
+        self.producer.flush()
+        # https://github.com/apache/pulsar/issues/5666
+        if len(results) != sent:
+            for i in range(100):
+                time.sleep(0.1)
+                if len(results) == sent:
+                    break
+            else:
+                return "Pulsar send_async: got %d results, expecting %d" % (len(results), count)
+        # Find the first error result, otherwise return "OK"
+        return next(("Pulsar error: "+str(e) for e in results if e != pulsar.Result.Ok), "OK")
 
     def run(self):
         def confirm(status):
