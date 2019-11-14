@@ -3,6 +3,7 @@ client:
 
 producer:
   topic: persistent://public/default/syslog
+  compression_type: LZ4
 
   # Using a fixed producer name ensures that two instances cannot run at once
   producer_name: rsyslog

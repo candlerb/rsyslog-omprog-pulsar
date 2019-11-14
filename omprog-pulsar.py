@@ -136,6 +136,11 @@ if __name__ == "__main__":
     os.dup2(2, 1)     # join stdout onto stderr
     new_stdout = os.fdopen(fd, "w")  # wrap the original stdout
 
+    # map compression type name to constant - and change the default from NONE
+    config["producer"]["compression_type"] = getattr(
+        pulsar.CompressionType, config["producer"].get("compression_type", "LZ4")
+    )
+
     client = pulsar.Client(**config["client"])
     producer = client.create_producer(**config["producer"])
     try:
